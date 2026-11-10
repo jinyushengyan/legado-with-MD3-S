@@ -8,28 +8,31 @@
 环境：JDK 21、Android SDK 37（compileSdk 37 / compileSdkMinor 1 / minSdk 26）。
 
 上游引入了 flavor 拆分（2026-11-10 同步），构建任务名需使用完整 flavor 变体：
-- `appCore` = 核心小说版（无本地漫画推理引擎，自用主变体）
-- `appComic` = 漫画增强版（内置 ML Kit / ONNX Runtime，多 ~50MB）
+- `appComic` = 漫画增强版（内置 ML Kit / ONNX Runtime 本地翻译、OCR、擦字、气泡检测），
+  **本分支默认构建目标**——不用不等于不要，功能齐备优先
+- `appCore` = 核心小说版（无本地漫画推理引擎，体积小 ~50MB）
 
 ```powershell
 # Debug（应用名「Legado·改」，包名 io.legato.kazusa.debug）
-.\gradlew.bat :app:assembleAppCoreDebug
+.\gradlew.bat :app:assembleAppComicDebug
 
 # Release（应用名「阅读·S」，版本 3.26.25-jinyu，同包名，R8 压缩）
-.\gradlew.bat :app:assembleAppCoreRelease
+.\gradlew.bat :app:assembleAppComicRelease
 
 # 重新生成 Room schema（改了 AppDatabase 版本/实体后必须跑）
-.\gradlew.bat :app:kspAppCoreDebugKotlin
+.\gradlew.bat :app:kspAppComicDebugKotlin
 ```
+
+需要轻量版时把 `AppComic` 换成 `AppCore`，两者包名相同、只能装一个。
 
 `gradle.properties` 已默认关闭 configuration cache 和 KSP 增量（Windows 跨盘符会导致
 R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `--no-configuration-cache`
 或 `-Pksp.incremental=false`，直接跑上面的命令即可。
 
 产物路径（ABI splits 开启，默认 3 份）：
-- `app/build/outputs/apk/appCore/debug/app-app-core-arm64-v8a-debug.apk`
-- `app/build/outputs/apk/appCore/debug/app-app-core-armeabi-v7a-debug.apk`
-- `app/build/outputs/apk/appCore/debug/app-app-core-universal-debug.apk`
+- `app/build/outputs/apk/appComic/debug/app-app-comic-arm64-v8a-debug.apk`
+- `app/build/outputs/apk/appComic/debug/app-app-comic-armeabi-v7a-debug.apk`
+- `app/build/outputs/apk/appComic/debug/app-app-comic-universal-debug.apk`
 - release 路径相同，替换 `debug` → `release`
 
 ### 版本号规则
