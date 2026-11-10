@@ -60,11 +60,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Ensure compile SDK 37
-        run: sdkmanager --install "platforms;android-37" || true
+      - name: Accept Android SDK licenses
+        run: |
+          SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          echo "已接受许可，缺失的 platform 由 Gradle 自动下载"
 
       - name: Decode keystore
         env:
