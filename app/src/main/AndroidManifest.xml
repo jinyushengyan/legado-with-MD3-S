@@ -459,7 +459,7 @@
             tools:ignore="ExportedContentProvider" />
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileProvider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

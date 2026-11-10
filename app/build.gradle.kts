@@ -86,10 +86,16 @@ android {
 
     buildTypes {
         getByName("release") {
-            if (project.hasProperty("RELEASE_STORE_FILE")) {
-                signingConfig = signingConfigs.getByName("myConfig")
+            // 与正式版共存：包名带 .debug 后缀，可覆盖安装当前自用的 debug 变体
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-jinyu"
+            manifestPlaceholders["app_name"] = "阅读·S"
+            signingConfig = if (project.hasProperty("RELEASE_STORE_FILE")) {
+                signingConfigs.getByName("myConfig")
+            } else {
+                // 自用包：没有 release keystore 时用 debug keystore 签名，便于直接装机
+                signingConfigs.getByName("debug")
             }
-            manifestPlaceholders["app_name"] = "@string/app_name"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -110,7 +116,7 @@ android {
             if (project.hasProperty("RELEASE_STORE_FILE")) {
                 signingConfig = signingConfigs.getByName("myConfig")
             }
-            manifestPlaceholders["app_name"] = "@string/app_name"
+            manifestPlaceholders["app_name"] = "Legado·改"
             versionNameSuffix = "_debug"
             isMinifyEnabled = false
             proguardFiles(
