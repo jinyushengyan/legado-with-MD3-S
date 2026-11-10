@@ -76,14 +76,14 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - name: Build comic release
+      - name: Build core + comic release
         env:
           STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleAppComicRelease --console=plain \
+          ./gradlew :app:assembleAppCoreRelease :app:assembleAppComicRelease --console=plain \
             -PRELEASE_STORE_FILE="$RUNNER_TEMP/release.jks" \
             -PRELEASE_STORE_PASSWORD="$STORE_PASSWORD" \
             -PRELEASE_KEY_ALIAS="$KEY_ALIAS" \
@@ -92,8 +92,8 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: legado-comic-release
-          path: app/build/outputs/apk/appComic/release/*.apk
+          name: legado-release
+          path: app/build/outputs/apk/app*/release/*.apk
           if-no-files-found: error
 
       - name: Publish release
@@ -105,13 +105,17 @@ jobs:
           VER="${M}.${m}.${p}-jinyu"
           TAG="${VER}.${GITHUB_RUN_NUMBER}"
           cat > "$RUNNER_TEMP/notes.md" <<EOF
-          基于上游 ${SYNCED_UPSTREAM} 同步构建（漫画增强版 comic，R8 压缩）。
+          基于上游 ${SYNCED_UPSTREAM} 同步构建，含自建多维度评分系统（R8 压缩正式版）。
 
-          包名 io.legato.kazusa.debug，可与官方版共存。
+          两种包，按需选一个（包名相同，只能装一个）：
+          - app-app-core-*.apk：基础版，体积小，云端识别/翻译可用
+          - app-app-comic-*.apk：漫画增强版，内置本地识别引擎
+
           架构：arm64-v8a / armeabi-v7a / universal，不确定就下 universal。
+          包名 io.legato.kazusa.debug，可与官方版共存。
           EOF
           gh release create "$TAG" \
-            app/build/outputs/apk/appComic/release/*.apk \
+            app/build/outputs/apk/app*/release/*.apk \
             --title "阅读·S ${VER}" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             --latest
