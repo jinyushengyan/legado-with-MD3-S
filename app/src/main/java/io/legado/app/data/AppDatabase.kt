@@ -138,7 +138,7 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 134,
+    version = 135,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
@@ -286,6 +286,8 @@ val appDb by lazy {
         AutoMigration(from = 132, to = 133),
         // book_ratings 新表：书籍维度评分，独立于 books，以规范化书名+作者为主键
         AutoMigration(from = 133, to = 134),
+        // 旧下载记录只有成功文件清单，无法从中判断是否整章完成。
+        AutoMigration(from = 134, to = 135),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -391,6 +393,13 @@ abstract class AppDatabase : RoomDatabase() {
                     where not exists (select * from book_groups where groupId = ${BookGroup.IdAudio})
                 """.trimIndent()
                 db.execSQL(insertBookGroupMusicSql)
+                @Language("sql")
+                val insertBookGroupVideoSql = """
+                    insert into book_groups(groupId, groupName, 'order', show)
+                    select ${BookGroup.IdVideo}, '视频', -24, 0
+                    where not exists (select * from book_groups where groupId = ${BookGroup.IdVideo})
+                """.trimIndent()
+                db.execSQL(insertBookGroupVideoSql)
                 Language("sql")
                 val insertGroupReading = """
                     insert into book_groups(groupId, groupName, 'order', show) 

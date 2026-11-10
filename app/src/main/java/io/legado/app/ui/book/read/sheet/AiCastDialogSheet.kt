@@ -74,6 +74,7 @@ import io.legado.app.ui.widget.components.settingItem.ClickableSettingItem
 import io.legado.app.ui.widget.components.settingItem.TinySliderSettingItem
 import io.legado.app.ui.widget.components.settingItem.TinySwitchSettingItem
 import io.legado.app.ui.widget.components.text.AppText
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -114,9 +115,9 @@ fun AiCastDialogSheet(
     // 那一章，切章后「删除分配」和发给 AI 的 currentChapter 都会打到错的章。
     val chapterIndex = ReadBook.durChapterIndex
     val chapterTitle = book?.durChapterTitle.orEmpty()
-    var assignedCount by remember(chapterIndex) { mutableStateOf(-1) }
-    var dialogueCount by remember(chapterIndex) { mutableStateOf(-1) }
-    var sceneCount by remember(chapterIndex) { mutableStateOf(-1) }
+    var assignedCount by remember(chapterIndex) { mutableIntStateOf(-1) }
+    var dialogueCount by remember(chapterIndex) { mutableIntStateOf(-1) }
+    var sceneCount by remember(chapterIndex) { mutableIntStateOf(-1) }
     var reassign by remember { mutableStateOf(false) }
     // 思考过程永远回显，只是默认收起（见 thinkingOpen）；这一行才是真的决定模型想多久
     var reasoningLevel by remember { mutableStateOf(AiReasoningLevel.AUTO) }
@@ -158,7 +159,7 @@ fun AiCastDialogSheet(
                     CastModelGroup(
                         providerId = provider.id,
                         providerName = provider.name,
-                        models = models.filter { it.providerId == provider.id }
+                        models = models.filter { it.providerId == provider.id && io.legado.app.domain.model.AiImageModels.isTextModel(provider.protocol, it.modelId, it.capabilities) }
                             .map {
                                 CastModelChoice(
                                     profileId = it.id,
@@ -205,7 +206,7 @@ fun AiCastDialogSheet(
     )
 
     // 子页：0=主面板 1=预设管理
-    var page by remember { mutableStateOf(0) }
+    var page by remember { mutableIntStateOf(0) }
     var presetsVersion by remember { mutableIntStateOf(0) }
     val presets by produceState<ImmutableList<AiCastPresetUi>>(
         initialValue = persistentListOf(),
@@ -568,7 +569,15 @@ fun AiCastDialogSheet(
                         subtitle = stringResource(R.string.ai_cast_request_hint),
                     )
                     if (requestOpen) {
-                        AiCastSection {
+                        AiCastSection(
+                            // 整段原样复制：分配错了要拿去喂别的 AI 改提示词，手抄不现实
+                            trailing = {
+                                SmallOutlinedButton(
+                                    onClick = { context.sendToClip(progress.request) },
+                                    text = stringResource(R.string.ai_cast_copy_request),
+                                )
+                            },
+                        ) {
                             val requestScroll = rememberScrollState()
                             Box(
                                 modifier = Modifier
@@ -964,16 +973,21 @@ private fun AiCastSection(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (title != null) {
+            // 只有 trailing 没有标题时也要出来：否则挂上去的按钮（如「复制」）会被静默丢掉
+            if (title != null || trailing != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppText(
-                        text = title,
-                        modifier = Modifier.weight(1f),
-                        style = LegadoTheme.typography.titleSmall,
-                        color = LegadoTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (title == null) {
+                        Box(modifier = Modifier.weight(1f))
+                    } else {
+                        AppText(
+                            text = title,
+                            modifier = Modifier.weight(1f),
+                            style = LegadoTheme.typography.titleSmall,
+                            color = LegadoTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     trailing?.invoke(this)
                 }
             }

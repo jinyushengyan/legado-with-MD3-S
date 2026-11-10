@@ -41,6 +41,10 @@ data class ReaderTextStyle(
     val linePadTopPx: Float = 0f,
     /** 命中行行距（px）：这一行之后多留的空白。 */
     val linePadBottomPx: Float = 0f,
+    /** Semantic HTML mark; its background color is resolved at draw time. */
+    val marked: Boolean = false,
+    /** Reader foreground to fall back to when [colorArgb] comes from the book. */
+    val bookColorFallbackArgb: Int? = null,
 )
 
 data class ReaderTextBackgroundImage(
@@ -331,6 +335,8 @@ sealed interface ReaderElement {
         override val bounds: ReaderRect,
         val chapterPosition: Int,
         val paragraphIndex: Int,
+        /** Visual-only rows keep a navigation anchor without consuming a body character. */
+        val semanticLength: Int = 1,
     ) : ReaderElement
 
     data class ParagraphMarker(
@@ -338,6 +344,8 @@ sealed interface ReaderElement {
         val colorArgb: Int,
         val strokeWidthPx: Float,
         val circular: Boolean,
+        val label: String? = null,
+        val textSizePx: Float = 0f,
     ) : ReaderElement
 
     data class Rule(

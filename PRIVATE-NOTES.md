@@ -1,32 +1,41 @@
-# 私人魔改版接手说明（3.26.19-jinyu）
+# 私人魔改版接手说明（3.26.25-jinyu）
 
-本包基于 [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) 3.26.19，
+本包基于 [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) 3.26.25，
 只针对"纯小说阅读"场景做私有改动。本文件记录**与原版不同的地方**，读完这一篇即可接手。
 
 ## 构建
 
-环境：JDK 21、Android SDK 37（compileSdk 37 / minSdk 26）。
+环境：JDK 21、Android SDK 37（compileSdk 37 / compileSdkMinor 1 / minSdk 26）。
+
+上游引入了 flavor 拆分（2026-11-10 同步），构建任务名需使用完整 flavor 变体：
+- `appCore` = 核心小说版（无本地漫画推理引擎，自用主变体）
+- `appComic` = 漫画增强版（内置 ML Kit / ONNX Runtime，多 ~50MB）
 
 ```powershell
 # Debug（应用名「Legado·改」，包名 io.legato.kazusa.debug）
-.\gradlew.bat :app:assembleAppDebug
+.\gradlew.bat :app:assembleAppCoreDebug
 
-# Release（应用名「阅读·S」，版本 3.26.19-jinyu，同包名，R8 压缩）
-.\gradlew.bat :app:assembleAppRelease
+# Release（应用名「阅读·S」，版本 3.26.25-jinyu，同包名，R8 压缩）
+.\gradlew.bat :app:assembleAppCoreRelease
+
+# 重新生成 Room schema（改了 AppDatabase 版本/实体后必须跑）
+.\gradlew.bat :app:kspAppCoreDebugKotlin
 ```
 
 `gradle.properties` 已默认关闭 configuration cache 和 KSP 增量（Windows 跨盘符会导致
 R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `--no-configuration-cache`
 或 `-Pksp.incremental=false`，直接跑上面的命令即可。
 
-产物：
-- `app/build/outputs/apk/app/debug/app-app-arm64-v8a-debug.apk`
-- `app/build/outputs/apk/app/release/app-app-arm64-v8a-release.apk`
-- 另有 `armeabi-v7a` 与 `universal` 变体
+产物路径（ABI splits 开启，默认 3 份）：
+- `app/build/outputs/apk/appCore/debug/app-appCore-arm64-v8a-debug.apk`
+- `app/build/outputs/apk/appCore/debug/app-appCore-armeabi-v7a-debug.apk`
+- `app/build/outputs/apk/appCore/debug/app-appCore-universal-debug.apk`
+- release 路径相同，替换 `debug` → `release`
 
 ### 版本号规则
 
-- `versionName` 在魔改分支上固定为「上游版本 + `-jinyu`」，例如上游 3.26.19 → `3.26.19-jinyu`。
+- `versionName` 在魔改分支上固定为「上游版本 + `-jinyu`」，例如上游 3.26.25 → `3.26.25-jinyu`。
+  release buildType 自动追加 `-jinyu`（`versionNameSuffix`），无需手动改 `version.properties`。
 - 同版本内自己又改了东西：追加 `-beta.N`。上游发 beta 时写成 `<上游版本>-beta.N-jinyu`。
 - `versionCode` 不手工维护，沿用 `app/build.gradle.kts` 里的默认值（CI 有 `COMMIT_NUMBER`
   时自动偏移）。**自用发布如果覆盖安装被拒，先把默认值 +1**；签名变化时仍需卸载重装。
@@ -53,8 +62,8 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 - `feature/reader/core/model/ReaderBookmarkBadge.kt`
 - `feature/reader/legacy/LegacyReaderPageDecorationFactory.kt`
 
-角标 top 贴页眉下沿，恢复 beta.23 之前的行为（角标在页眉之下，不压正文首行）。
-参数名 `headerBottomPx`。**该修复已合并回上游（PR #2573）**，后续同步上游时这部分无需保留。
+角标 top 贴页眉下沿（`topPx = headerBottomPx`）。**该修复已合并回上游（PR #2573）**，
+同步上游后这部分以上游实现为准，无需额外保留我们的 patch。
 
 ### 3. 备份/恢复忽略项（`help/storage/BackupConfig.kt`）
 
@@ -75,7 +84,7 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 |---|---|
 | `data/entities/BookRating.kt` | Room 实体，表 `book_ratings` |
 | `data/dao/BookRatingDao.kt` | DAO |
-| `data/AppDatabase.kt` | version 134，`AutoMigration(133→134)` 仅新增表，不丢旧数据 |
+| `data/AppDatabase.kt` | version 135，`AutoMigration(133→134)` 加评分表 + `AutoMigration(134→135)` 承接上游列变更 |
 | `domain/model/BookRating.kt` | 维度/分级配置、总分公式、规范化 key |
 | `domain/gateway/BookRatingGateway.kt` | 领域接口 |
 | `data/repository/BookRatingRepository.kt` | 配置存 `PreferKey.bookRatingConfig`，CSV 导出 |
@@ -110,13 +119,23 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 
 ## 分支与同步上游
 
-- 魔改集中在 `jinyu` 分支，基线是上游 3.26.19 的发布提交 `c6798651`，`main` 保持与上游一致。
-- 同步上游：`git fetch upstream main` → `git merge upstream/main`。
-- 冲突高发文件：`data/AppDatabase.kt`（数据库版本号与迁移列表是长行追加）、
+- 魔改集中在 `jinyu` 分支，基线是上游 3.26.19 的发布提交 `c6798651`，
+  当前已同步到上游 main tip（2026-11-10，`4d2cc8e5`）。`main` 保持与上游一致。
+- 同步上游步骤（Windows + ghproxy 网络）：
+  1. 浅克隆上游到临时目录：`git clone --depth 1 --no-checkout https://ghproxy.net/https://github.com/HapeLee/legado-with-MD3.git upstream_main`
+  2. 在临时目录加深祖先链：`git fetch --shallow-since=2026-10-22 --no-tags origin main`
+     （必须覆盖我们的基线 `c6798651`，否则 merge-base 为空，后续 merge 会变成乱冲突）
+  3. 拉到工作仓库：`git fetch --update-shallow --depth=1000 --no-tags ../upstream_main main:refs/remotes/upstream/main`
+  4. 合并：`git merge --no-ff upstream/main`
+  5. 解决冲突后 `git add`，然后 `git commit`
+- 冲突高发文件：`data/AppDatabase.kt`（数据库版本号与迁移列表长行追加）、
   `help/storage/BackupConfig.kt`、`res/values*/strings.xml`、`ui/main/MainNavGraph.kt`、
-  `ui/book/info/BookInfoScreen.kt`、`app/build.gradle.kts`。
-- 若上游也升了数据库版本：把 `version` 改成「上游版本 + 1」，`AutoMigration(133→134)`
-  顺延为 `(上游版本→新版本)`，并重新生成 `app/schemas/io.legado.app.data.AppDatabase/<新版本>.json`。
+  `ui/book/info/BookInfoScreen.kt`、`app/build.gradle.kts`、
+  `ui/config/ConfigNavScreen.kt`（导航回调参数列表）。
+- 数据库版本冲突处置：双方若都占了同一个 version 号（如本次双方都用 134），
+  把 `version` 改为「当前最大 + 1」，并追加一条 `AutoMigration(旧版→新版)`。
+  然后重新跑 `.\gradlew.bat :app:kspAppCoreDebugKotlin` 生成新的 `app/schemas/.../<新版本>.json`。
+  Room 的 AutoMigration 会对比新旧 schema 自动生成 ALTER TABLE SQL。
 - 已合并回上游的两处（书签角标、themePrefKeys）在同步后应以上游实现为准。
 
 ## 已知环境问题（非代码缺陷）
@@ -127,6 +146,8 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 - **vivo 等国产 ROM 的 adb 安装拦截**：报 `INSTALL_FAILED_ABORTED: User rejected permissions`。
   需要开启"USB 调试（安全设置）"和"允许通过 USB 安装应用"，或把 APK 推到
   `/sdcard/Download/` 后手动点击安装。
+- **Gradle daemon 兼容**：上游升级后旧 daemon 会报 "incompatible and N stopped"，
+  下次构建会自动启新的，忽略即可。
 
 ## 架构约束
 

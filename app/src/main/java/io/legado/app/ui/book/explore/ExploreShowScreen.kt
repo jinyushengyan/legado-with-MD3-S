@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed as staggeredItemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -41,13 +41,11 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.chrisbanes.haze.HazeState
 import io.legado.app.R
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.ui.main.bookCoverSharedElementKey
-import io.legado.app.ui.theme.responsiveHazeEffect
-import io.legado.app.ui.theme.responsiveHazeSource
+import io.legado.app.ui.theme.LocalBottomOverlayPadding
 import io.legado.app.ui.widget.components.AppPullToRefresh
 import io.legado.app.ui.widget.components.AppScaffold
 import io.legado.app.ui.widget.components.LoadMoreFooter
@@ -168,11 +166,10 @@ fun ExploreShowScreen(
         }
     }
     val listState = rememberLazyListState()
-    val gridState = rememberLazyGridState()
+    val gridState = rememberLazyStaggeredGridState()
     val defaultScrollBehavior = GlassTopAppBarDefaults.defaultScrollBehavior()
     val scrollBehavior = embeddedScrollBehavior ?: defaultScrollBehavior
     val isGridMode = state.layoutState == 1
-    val hazeState = remember { HazeState() }
     val showLoadMoreFooter = !state.isRefreshing &&
         (state.isLoading || state.errorMsg != null || state.isEnd)
     val canLoadMore = state.books.isNotEmpty() &&
@@ -293,26 +290,21 @@ fun ExploreShowScreen(
                 label = "LayoutCrossfade"
             ) { isGrid ->
                 if (isGrid) {
-                    LazyVerticalGrid(
+                    LazyVerticalStaggeredGrid(
                         state = gridState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(
-                                if (embeddedInMain) Modifier else Modifier.responsiveHazeSource(
-                                    hazeState
-                                )
-                            ),
-                        columns = GridCells.Fixed(state.gridCount),
+                        modifier = Modifier.fillMaxSize(),
+                        columns = StaggeredGridCells.Fixed(state.gridCount),
                         contentPadding = PaddingValues(
                             top = paddingValues.calculateTopPadding() + 12.dp,
-                            bottom = paddingValues.calculateBottomPadding() + if (embeddedInMain) 108.dp else 12.dp,
+                            bottom = paddingValues.calculateBottomPadding() +
+                                if (embeddedInMain) 108.dp.coerceAtLeast(LocalBottomOverlayPadding.current) else 12.dp,
                             start = 12.dp,
                             end = 12.dp
                         ),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalItemSpacing = 8.dp
                     ) {
-                        itemsIndexed(
+                        staggeredItemsIndexed(
                             items = books,
                             key = { index, item -> "${item.book.bookUrl}:$index" }
                         ) { index, item ->
@@ -343,7 +335,7 @@ fun ExploreShowScreen(
                         }
 
                         if (showLoadMoreFooter) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
+                            item(span = StaggeredGridItemSpan.FullLine) {
                                 ExploreShowLoadMoreFooter(
                                     state = state,
                                     onRetry = { onIntent(ExploreShowIntent.LoadMore) },
@@ -354,17 +346,12 @@ fun ExploreShowScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .then(
-                                if (embeddedInMain) Modifier else Modifier.responsiveHazeSource(
-                                    hazeState
-                                )
-                            ),
+                        modifier = Modifier.fillMaxSize(),
                         state = listState,
                         contentPadding = PaddingValues(
                             top = paddingValues.calculateTopPadding(),
-                            bottom = paddingValues.calculateBottomPadding() + if (embeddedInMain) 108.dp else 16.dp
+                            bottom = paddingValues.calculateBottomPadding() +
+                                if (embeddedInMain) 108.dp.coerceAtLeast(LocalBottomOverlayPadding.current) else 16.dp
                         )
                     ) {
                         itemsIndexed(
@@ -419,7 +406,6 @@ fun ExploreShowScreen(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 GlassMediumFlexibleTopAppBar(
-                    modifier = Modifier.responsiveHazeEffect(state = hazeState),
                     title = state.selectedKindTitle ?: title,
                     navigationIcon = { TopBarNavigationButton(onClick = onBack) },
                     actions = {
@@ -559,6 +545,7 @@ fun ExploreBookGridItem(
         modifier = modifier.padding(4.dp),
         sharedTransitionScope = sharedTransitionScope,
         animatedVisibilityScope = animatedVisibilityScope,
-        sharedCoverKey = sharedCoverKey
+        sharedCoverKey = sharedCoverKey,
+        adaptCoverAspectRatio = true,
     )
 }

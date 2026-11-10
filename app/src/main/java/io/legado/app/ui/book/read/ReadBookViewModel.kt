@@ -39,6 +39,7 @@ import io.legado.app.domain.gateway.OtherSettingsGateway
 import io.legado.app.domain.gateway.ReadStyleGateway
 import io.legado.app.domain.gateway.ThemeSettingsGateway
 import io.legado.app.domain.model.readaloud.ReadAloudSessionStatus
+import io.legado.app.domain.model.readaloud.ReadAloudProgress
 import io.legado.app.domain.model.settings.ReadAloudTimerMode
 import io.legado.app.domain.usecase.AiTextFactoryUseCase
 import io.legado.app.domain.usecase.ChangeBookSourceUseCase
@@ -71,12 +72,12 @@ import io.legado.app.model.ReadBook
 import io.legado.app.model.ReaderSession
 import io.legado.app.model.ReaderSessionEvent
 import io.legado.app.model.SourceCallBack
-import io.legado.app.model.activeReadAloudProgress
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.reader.isPayable
 import io.legado.app.model.translation.TranslationChapterStatus
+import io.legado.app.model.translation.TranslationManager
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.read.sheet.ReaderBookSheetTab
 import io.legado.app.ui.book.searchContent.SearchResult
@@ -178,13 +179,9 @@ class ReadBookViewModel(
     @Volatile private var composePageContext: ReaderPageContext? = null
     private var composeProgressJob: Job? = null
     private var readBookSyncJob: Job? = null
-    private val _readAloudProgress = MutableStateFlow(
-        activeReadAloudProgress(
-            isPlaying = ReadBook.isCurrentBookReadAloud && BaseReadAloudService.isPlay(),
-            currentProgress = BaseReadAloudService.currentProgress,
-        )
-    )
+    private val _readAloudProgress = MutableStateFlow(currentReadAloudProgress())
     val readAloudProgress = _readAloudProgress.asStateFlow()
+
     private suspend fun emitEffectWhenSubscribed(effect: ReadBookEffect) {
         _effects.subscriptionCount.first { it > 0 }
         _effects.emit(effect)
@@ -262,6 +259,7 @@ class ReadBookViewModel(
         bookRepository = bookRepository,
         verifyUseCase = verifyBookmarkTargetUseCase,
         relocateMarkingTargetUseCase = relocateMarkingTargetUseCase,
+        readAloudSettingsGateway = readAloudSettingsRepository,
         host = object : ReadBookmarkNavigateDelegate.Host {
             override val pendingTarget: PendingBookmarkTarget?
                 get() = _uiState.value.pendingBookmarkTarget
@@ -561,8 +559,8 @@ class ReadBookViewModel(
                 this@ReadBookViewModel.openReadMenuRoute(route)
             }
 
-            override fun publishReadAloudProgress(chapterStart: Int) {
-                _readAloudProgress.value = chapterStart
+            override fun publishReadAloudProgress(progress: ReadAloudProgress) {
+                _readAloudProgress.value = progress
             }
         },
         readSettingsRepository = readSettingsRepository,
@@ -646,6 +644,15 @@ class ReadBookViewModel(
         ReadingProgressSyncDelegate(viewModelScope, getReadingProgressUseCase) { configured ->
             _uiState.update { it.copy(isReadingProgressSyncConfigured = configured) }
         }
+    }
+
+    /** 离线缓存域；范围预览是弹窗瞬态，仍留在 UiState（同 pendingBookmarkTarget）。 */
+    private val cacheDelegate by lazy {
+        ReadBookCacheDelegate(
+            context, viewModelScope, bookRepository,
+            emit = { _effects.tryEmit(it) },
+            onPreview = { preview -> _uiState.update { it.copy(cacheRangePreview = preview) } },
+        )
     }
 
     init {
@@ -1329,7 +1336,7 @@ class ReadBookViewModel(
                 }
             }
 
-            is ReadBookIntent.TtsProgress -> readAloudDelegate.updateProgress(intent.chapterStart)
+            is ReadBookIntent.TtsProgress -> readAloudDelegate.updateProgress(intent.progress)
             is ReadBookIntent.ReadAloudAction -> readAloudDelegate.openDefaultInterface()
             is ReadBookIntent.ConfirmAddCurrentBookToBookshelf -> addCurrentBookToBookshelfAndFinish()
             is ReadBookIntent.ExitWithoutAddingCurrentBookToBookshelf -> removeCurrentNotShelfBookAndFinish()
@@ -1606,9 +1613,9 @@ class ReadBookViewModel(
                 _effects.tryEmit(ReadBookEffect.PageAnimChanged)
             }
 
-            is ReadBookIntent.DownloadChapters -> {
-                _effects.tryEmit(ReadBookEffect.DownloadChapters(intent.start, intent.end))
-            }
+            is ReadBookIntent.DownloadChapters -> cacheDelegate.downloadRange(intent.start, intent.end)
+
+            is ReadBookIntent.ScanCacheRange -> cacheDelegate.previewRange(intent.start, intent.end)
 
             is ReadBookIntent.SaveChapterContent -> {
                 ReadBook.book?.let {
@@ -1884,8 +1891,8 @@ class ReadBookViewModel(
             }
         }
         viewModelScope.launch {
-            eventFlowSticky<Int>(EventBus.TTS_PROGRESS).collect { chapterStart ->
-                readAloudDelegate.updateProgress(chapterStart)
+            eventFlowSticky<ReadAloudProgress>(EventBus.TTS_PROGRESS).collect { progress ->
+                readAloudDelegate.updateProgress(progress)
             }
         }
     }
@@ -2221,9 +2228,9 @@ class ReadBookViewModel(
 
     suspend fun uploadBookProgress(book: Book) = loadDelegate.uploadBookProgress(book)
 
-    fun openChapter(index: Int, durChapterPos: Int = 0, success: (() -> Unit)? = null) {
+    fun openChapter(index: Int, durChapterPos: Int = 0, success: (() -> Unit)? = null) =
         ReadBook.openChapter(index, durChapterPos, success = success)
-    }
+    fun openInternalBookLink(link: String) = bookmarkNavigateDelegate.navigateToInternalLink(link)
 
     fun removeFromBookshelf(success: (() -> Unit)? = null) {
         val book = ReadBook.book
@@ -2482,13 +2489,25 @@ class ReadBookViewModel(
         ReadBook.loadContent(false)
     }
 
+    /**
+     * 重新翻译本章：清掉译文与分块缓存后重新加载，由 [ReadBook.loadContent] 重新发起翻译。
+     *
+     * 本章正在翻译时直接拦掉。`TranslationManager` 没有取消能力，删缓存不会停掉旧任务：
+     * 旧任务仍会往同一个分块文件追加旧版本译文（`contentHash` 只认原文），
+     * 新任务读到后会把旧块当成本次结果复用，最终产出新旧混排的译文。
+     */
     private fun retranslateCurrentChapter() {
         val book = ReadBook.book ?: return
         viewModelScope.launch {
             val chapter = currentChapter() ?: return@launch
-            io.legado.app.model.translation.TranslationManager.deleteTranslationCache(book, chapter)
+            if (TranslationManager.getChapterTaskStateFlow(book.bookUrl, chapter.index) != null) {
+                _effects.tryEmit(ReadBookEffect.ShowToast(context.getString(R.string.retranslate_in_progress)))
+                return@launch
+            }
+            TranslationManager.deleteTranslationCache(book, chapter)
             book.setTranslationMode(true)
             book.save()
+            _uiState.update { it.copy(translationMode = true) }
             ReadBook.loadContent(false)
         }
     }

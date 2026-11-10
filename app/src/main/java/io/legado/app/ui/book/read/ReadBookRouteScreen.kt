@@ -172,6 +172,8 @@ fun ReadBookRouteScreen(
     onOpenTtsCache: () -> Unit = {},
     onOpenSourceEdit: (sourceUrl: String) -> Unit,
     onNavigateBack: () -> Boolean = { true },
+    /** 打开气泡管理页：由导航宿主 push，返回时回到阅读界面。 */
+    onOpenBubbleManage: () -> Unit = {},
 ) {
     // 归因定界：与末尾 compose.screen.end 成对。若首帧 `Compose:recompose` 里出现
     // begin 之前的空档，说明那部分耗时在本屏之外（导航宿主 / 共享转场层）。
@@ -257,8 +259,8 @@ fun ReadBookRouteScreen(
 
     LaunchedEffect(viewModel, controller, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.readAloudProgress.collect { chapterStart ->
-                chapterStart?.let(controller::updateReadAloudProgress)
+            viewModel.readAloudProgress.collect { position ->
+                position?.let(controller::updateReadAloudProgress)
             }
         }
     }
@@ -866,6 +868,7 @@ fun ReadBookRouteScreen(
                         state = state,
                         preferences = readPreferences,
                         sheetsVisible = isTopRoute,
+                        onOpenBubbleManage = onOpenBubbleManage,
                         additionalSheetContent = { sheet, visible, dismissSheet ->
                             when (sheet) {
                                 is ReadBookSheet.BookNavigation -> {
@@ -1030,15 +1033,17 @@ private fun sampleReaderSystemBarInsets(
 ): ReaderContentAvoidancePolicy.SystemBarInsets {
     val rootInsets = ViewCompat.getRootWindowInsets(view)
     val cutout = rootInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
+    val navigationBar = rootInsets?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())
     return ReaderContentAvoidancePolicy.SystemBarInsets(
         statusBarTopPx = rootInsets
             ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())?.top ?: 0,
-        navigationBarBottomPx = rootInsets
-            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0,
+        navigationBarBottomPx = navigationBar?.bottom ?: 0,
         cutoutLeftPx = cutout?.left ?: 0,
         cutoutTopPx = cutout?.top ?: 0,
         cutoutRightPx = cutout?.right ?: 0,
         cutoutBottomPx = cutout?.bottom ?: 0,
+        navigationBarLeftPx = navigationBar?.left ?: 0,
+        navigationBarRightPx = navigationBar?.right ?: 0,
     )
 }
 
