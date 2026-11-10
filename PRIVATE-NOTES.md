@@ -27,9 +27,9 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 或 `-Pksp.incremental=false`，直接跑上面的命令即可。
 
 产物路径（ABI splits 开启，默认 3 份）：
-- `app/build/outputs/apk/appCore/debug/app-appCore-arm64-v8a-debug.apk`
-- `app/build/outputs/apk/appCore/debug/app-appCore-armeabi-v7a-debug.apk`
-- `app/build/outputs/apk/appCore/debug/app-appCore-universal-debug.apk`
+- `app/build/outputs/apk/appCore/debug/app-app-core-arm64-v8a-debug.apk`
+- `app/build/outputs/apk/appCore/debug/app-app-core-armeabi-v7a-debug.apk`
+- `app/build/outputs/apk/appCore/debug/app-app-core-universal-debug.apk`
 - release 路径相同，替换 `debug` → `release`
 
 ### 版本号规则
