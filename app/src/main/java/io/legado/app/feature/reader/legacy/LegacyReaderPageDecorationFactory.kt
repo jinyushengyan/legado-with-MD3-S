@@ -159,7 +159,9 @@ object LegacyReaderPageDecorationFactory : KoinComponent {
                 hasBookmark = hasBookmark,
                 isScroll = ReadBook.pageAnim() == 3,
                 pageWidthPx = page.widthPx,
-                contentTopPx = page.contentTopPx,
+                // page.contentTopPx = 正文上边距 + contentPaddingTop + 页眉高度；
+                // 减掉正文上边距即为页眉下沿（页眉关闭时退化为内容区顶部）。
+                headerBottomPx = page.contentTopPx - ReadBookConfig.paddingTop.dpToPx(),
                 contentRightPaddingPx = ReadBookConfig.paddingRight.dpToPx(),
                 density = appCtx.resources.displayMetrics.density,
                 sizeDp = settings.bookmarkBadgeSize,
