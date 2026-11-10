@@ -94,3 +94,23 @@ jobs:
           name: legado-comic-release
           path: app/build/outputs/apk/appComic/release/*.apk
           if-no-files-found: error
+
+      - name: Publish release
+        run: |
+          set -e
+          M=$(grep '^VERSION_MAJOR=' app/version.properties | cut -d= -f2)
+          m=$(grep '^VERSION_MINOR=' app/version.properties | cut -d= -f2)
+          p=$(grep '^VERSION_PATCH=' app/version.properties | cut -d= -f2)
+          VER="${M}.${m}.${p}-jinyu"
+          TAG="${VER}.${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" \
+            app/build/outputs/apk/appComic/release/*.apk \
+            --title "阅读·S ${VER}" \
+            --notes "基于上游 ${SYNCED_UPSTREAM} 同步构建（漫画增强版 / comic，R8 压缩）。
+
+包名 io.legato.kazusa.debug，可与官方版共存。
+架构：arm64-v8a / armeabi-v7a / universal，按手机架构选一个即可，不确定就下 universal。" \
+            --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNCED_UPSTREAM: ${{ needs.sync.outputs.upstream }}
