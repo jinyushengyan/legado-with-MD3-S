@@ -1,8 +1,10 @@
-name: Sync Upstream and Build
+name: 同步上游 & 发布 Release
 
-# 手动触发：把上游 main 合并进 jinyu，然后编译漫画增强版正式包（release / R8）
+# 触发：手动点 Run workflow，或 push 到 jinyu 分支（日常更新自动跑）
 on:
   workflow_dispatch:
+  push:
+    branches: [jinyu]
 
 permissions:
   contents: write
@@ -15,10 +17,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     outputs:
-      merged: ${{ steps.merge.outputs.merged }}
       upstream: ${{ steps.merge.outputs.upstream }}
+      commit_sha: ${{ steps.merge.outputs.commit_sha }}
     steps:
-      - name: Checkout jinyu
+      - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: jinyu
@@ -35,20 +37,19 @@ jobs:
           UP=$(git rev-parse upstream/main)
           echo "upstream=$UP" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor "$UP" HEAD; then
-            echo "已经是最新，无需合并"
-            echo "merged=false" >> "$GITHUB_OUTPUT"
+            echo "已经包含上游 $UP，无需合并"
           else
-            # 有冲突时这里会失败，整个 workflow 停止，需要回本地手工合并
+            echo "合入上游 $UP"
             git merge --no-ff -m "merge: sync upstream $UP" upstream/main
             git push origin HEAD:jinyu
-            echo "merged=true" >> "$GITHUB_OUTPUT"
           fi
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   build:
     needs: sync
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout jinyu
+      - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: jinyu
