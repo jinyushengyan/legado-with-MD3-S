@@ -74,6 +74,7 @@ object BackupConfig {
 
     //数据库忽略key
     private const val dbKeyBookmark = "bookmark"
+    private const val dbKeyBookRating = "bookRating"
     private const val dbKeyBookGroup = "bookGroup"
     private const val dbKeyBookSource = "bookSource"
     private const val dbKeyRssSource = "rssSource"
@@ -94,7 +95,7 @@ object BackupConfig {
     private const val dbKeyServer = "server"
 
     val dbIgnoreKeys = arrayOf(
-        dbKeyBookmark, dbKeyBookGroup, dbKeyBookSource, dbKeyRssSource,
+        dbKeyBookmark, dbKeyBookRating, dbKeyBookGroup, dbKeyBookSource, dbKeyRssSource,
         dbKeyRssStar, dbKeyReplaceRule, dbKeyReadRecord, dbKeySearchHistory,
         dbKeySourceSub, dbKeyTxtTocRule, dbKeyHttpTts, dbKeyKeyboardAssists,
         dbKeyDictRule, dbKeyHomepageModules, dbKeyHomepageCustomSets,
@@ -103,6 +104,7 @@ object BackupConfig {
 
     val dbIgnoreTitle = arrayOf(
         appCtx.getString(R.string.bookmark),
+        appCtx.getString(R.string.book_rating),
         appCtx.getString(R.string.book_group),
         appCtx.getString(R.string.book_source),
         appCtx.getString(R.string.rss_source),
@@ -261,8 +263,12 @@ object BackupConfig {
     )
 
     private val themePrefKeys = arrayOf(
+        PreferKey.appTheme,
+        PreferKey.pureBlack,
         PreferKey.cPrimary,
         PreferKey.cNPrimary,
+        PreferKey.cAccent,
+        PreferKey.cNAccent,
         PreferKey.bgImage,
         PreferKey.bgImageBlurring,
         PreferKey.bgImageN,
@@ -295,6 +301,7 @@ object BackupConfig {
         PreferKey.bookInfoNetworkCoverBackground,
         PreferKey.bookInfoDefaultCoverBackground,
         PreferKey.bookInfoAuthorSearchFallback,
+        PreferKey.bookInfoInputColor,
         PreferKey.cBackground,
         PreferKey.cBBackground,
         PreferKey.cNBackground,
@@ -314,6 +321,45 @@ object BackupConfig {
         PreferKey.eyeProtectionSchedule,
         PreferKey.eyeProtectionStartTime,
         PreferKey.eyeProtectionEndTime,
+        // 字体与预测返回
+        PreferKey.fontScale,
+        PreferKey.appFontPath,
+        PreferKey.isPredictiveBackEnabled,
+        // 卡片圆角/边框与分组样式
+        PreferKey.overrideBaseCardCornerRadius,
+        PreferKey.baseCardCornerRadius,
+        PreferKey.overrideBaseCardBorder,
+        PreferKey.baseCardBorderWidth,
+        PreferKey.baseCardBorderColor,
+        PreferKey.baseCardBorderColorNight,
+        PreferKey.disableSplicedColumnGroupCornerRadius,
+        // 分隔线
+        PreferKey.enableItemDivider,
+        PreferKey.itemDividerWidth,
+        PreferKey.itemDividerLength,
+        PreferKey.itemDividerColor,
+        // 容器背景图与透明度
+        PreferKey.enableContainerBackgroundImage,
+        PreferKey.appColumnBackgroundOpacity,
+        PreferKey.glassCardBackgroundOpacity,
+        PreferKey.largeContainerBackgroundImageLight,
+        PreferKey.largeContainerBackgroundImageDark,
+        PreferKey.itemBackgroundImageLight,
+        PreferKey.itemBackgroundImageDark,
+        // 自定义标签色
+        PreferKey.enableCustomTagColors,
+        PreferKey.customTagColors,
+        // 底部导航自定义图标（缺组会导致恢复后被清空）
+        PreferKey.navIconHome,
+        PreferKey.navIconBookshelf,
+        PreferKey.navIconExplore,
+        PreferKey.navIconRss,
+        PreferKey.navIconMy,
+        PreferKey.navIconHomeSelected,
+        PreferKey.navIconBookshelfSelected,
+        PreferKey.navIconExploreSelected,
+        PreferKey.navIconRssSelected,
+        PreferKey.navIconMySelected,
     )
 
     private val bookshelfPrefKeys = arrayOf(

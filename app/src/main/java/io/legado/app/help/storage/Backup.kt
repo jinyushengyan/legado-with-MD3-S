@@ -157,6 +157,9 @@ object Backup {
             writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath)
             writeListToJson(appDb.bookMarkingDao.all, "bookMarking.json", backupPath)
         }
+        if (BackupConfig.dbIsNotIgnored("bookRating", true)) {
+            writeListToJson(appDb.bookRatingDao.all, "bookRating.json", backupPath)
+        }
         if (BackupConfig.dbIsNotIgnored("bookGroup", true)) {
             writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
         }

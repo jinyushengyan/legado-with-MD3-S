@@ -15,6 +15,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookMarking
+import io.legado.app.data.entities.BookRating
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.DictRule
@@ -163,6 +164,14 @@ object Restore : KoinComponent {
             fileToListT<BookMarking>(path, "bookMarking.json")?.let {
                 try {
                     appDb.bookMarkingDao.insert(*it.toTypedArray())
+                } catch (_: SQLiteConstraintException) {
+                }
+            }
+        }
+        if (BackupConfig.dbIsNotIgnored("bookRating")) {
+            fileToListT<BookRating>(path, "bookRating.json")?.let {
+                try {
+                    appDb.bookRatingDao.insert(*it.toTypedArray())
                 } catch (_: SQLiteConstraintException) {
                 }
             }
