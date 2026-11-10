@@ -17,9 +17,11 @@ import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookRating
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
+import io.legado.app.data.entities.readRecord.ReadRecordIdentity
 import io.legado.app.data.repository.BookGroupRepository
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.BookSourceRepository
@@ -28,12 +30,14 @@ import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.data.repository.RemoteBookRepository
 import io.legado.app.data.repository.SearchRepository
 import io.legado.app.domain.gateway.BookKnowledgeGateway
+import io.legado.app.domain.gateway.BookRatingGateway
 import io.legado.app.domain.gateway.CoverSettingsGateway
 import io.legado.app.domain.gateway.OtherSettingsGateway
 import io.legado.app.domain.gateway.PrivateAccessGateway
 import io.legado.app.domain.gateway.PrivateContentGateway
 import io.legado.app.domain.gateway.ThemeSettingsGateway
 import io.legado.app.domain.model.BookMatchKey
+import io.legado.app.domain.model.BookRatingConfig
 import io.legado.app.domain.model.BookshelfConflict
 import io.legado.app.domain.model.ConflictBookSummary
 import io.legado.app.domain.model.PrivateAccessState
@@ -120,6 +124,7 @@ class BookInfoViewModel(
     private val highlightTagRuleRepository: HighlightTagRuleRepository,
     private val imageLoader: ImageLoader,
     private val bookKnowledgeGateway: BookKnowledgeGateway,
+    private val bookRatingGateway: BookRatingGateway,
     private val themeSettingsGateway: ThemeSettingsGateway,
     private val coverSettingsGateway: CoverSettingsGateway,
     private val otherSettingsGateway: OtherSettingsGateway,
@@ -185,6 +190,10 @@ class BookInfoViewModel(
     private val _effects = MutableSharedFlow<BookInfoEffect>(extraBufferCapacity = 8)
     val effects = _effects.asSharedFlow()
 
+    /** 评分维度/限制级配置（全局），评分卡片与弹层共用。 */
+    val ratingConfig: StateFlow<BookRatingConfig> = bookRatingGateway.configFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, bookRatingGateway.currentConfig)
+
     init {
         collectEventBus()
     }
@@ -218,6 +227,7 @@ class BookInfoViewModel(
         set(value) {
             field = value
             observeReadRecordIfNeeded(value)
+            observeRatingIfNeeded(value)
         }
 
     override fun onCleared() {
@@ -313,6 +323,7 @@ class BookInfoViewModel(
 
     private var changeSourceCoroutine: Coroutine<*>? = null
     private var readRecordObserveJob: Job? = null
+    private var ratingObserveJob: Job? = null
     private var relatedBooksLoadJob: Job? = null
     private var characterLoadJob: Job? = null
 
@@ -444,6 +455,15 @@ class BookInfoViewModel(
                 }
                 ?.let { setSheet(BookInfoSheet.SourcePicker(it)) }
             BookInfoIntent.ReadRecordClick -> setSheet(BookInfoSheet.ReadRecord)
+            BookInfoIntent.RatingClick -> setSheet(BookInfoSheet.Rating)
+            is BookInfoIntent.SaveRating -> {
+                setSheet(BookInfoSheet.None)
+                saveRating(intent.levelId, intent.scores, intent.notes)
+            }
+            BookInfoIntent.ClearRating -> {
+                setSheet(BookInfoSheet.None)
+                clearRating()
+            }
             BookInfoIntent.RemarkClick -> showDialog(BookInfoDialog.EditRemark(currentBook?.remark))
             is BookInfoIntent.SaveCover -> {
                 saveCoverToGallery(intent.path)
@@ -1783,6 +1803,45 @@ class BookInfoViewModel(
         observingReadRecordKey = null
         currentReadRecordTotalTime = 0L
         currentReadRecordTimelineDays = emptyList()
+    }
+
+    /** 评分按规范化「书名+作者」关联，与书籍副本/是否在架无关。 */
+    private fun observeRatingIfNeeded(book: Book?) {
+        ratingObserveJob?.cancel()
+        ratingObserveJob = null
+        if (book == null) {
+            _screenState.update { it.copy(rating = null) }
+            return
+        }
+        ratingObserveJob = viewModelScope.launch {
+            bookRatingGateway.observeByBook(book.name, book.author).collectLatest { rating ->
+                _screenState.update { it.copy(rating = rating) }
+            }
+        }
+    }
+
+    private fun saveRating(levelId: String, scores: Map<String, Float>, notes: Map<String, String>) {
+        val book = currentBook ?: return
+        viewModelScope.launch {
+            bookRatingGateway.save(
+                BookRating(
+                    ratingKey = BookRatingConfig.ratingKeyOf(book.name, book.author),
+                    bookName = ReadRecordIdentity.bookName(book.name),
+                    bookAuthor = ReadRecordIdentity.author(book.author),
+                    bookUrl = book.bookUrl,
+                    levelId = levelId,
+                ),
+                scores,
+                notes,
+            )
+        }
+    }
+
+    private fun clearRating() {
+        val book = currentBook ?: return
+        viewModelScope.launch {
+            bookRatingGateway.delete(BookRatingConfig.ratingKeyOf(book.name, book.author))
+        }
     }
 
     private fun dismissSheet() {

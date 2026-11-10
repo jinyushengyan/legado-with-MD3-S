@@ -3880,4 +3880,35 @@
     <string name="battery_optimization_status_ignored">Unrestricted (Tap to check OEM background policy)</string>
     <string name="battery_optimization_status_not_ignored">Restricted or not configured; service may be killed in background</string>
     <string name="reader_paragraph_image_action_unsupported">This image uses a paragraph-rule action that this version does not support.</string>
+    <!-- 书籍维度评分 -->
+    <string name="book_rating">My Ratings</string>
+    <string name="book_rating_config">Rating Dimensions</string>
+    <string name="rating_total_score">Overall %1$.1f</string>
+    <string name="rating_not_rated">Not rated</string>
+    <string name="rating_content_level">Content rating</string>
+    <string name="rating_dimension_detail">Guideline</string>
+    <string name="rating_note_hint">Short comment (optional)</string>
+    <string name="rating_clear">Clear rating</string>
+    <string name="rating_import_from_read_records">Import from reading records</string>
+    <string name="rating_import_result">Imported %1$d books</string>
+    <string name="rating_add_manually">Add manually</string>
+    <string name="rating_book_name_hint">Book name (required)</string>
+    <string name="rating_book_author_hint">Author (optional)</string>
+    <string name="rating_edit_title">Rate this book</string>
+    <string name="rating_empty">No ratings yet. Import from reading records or add manually.</string>
+    <string name="rating_dimension_add">Add dimension</string>
+    <string name="rating_dimension_name_hint">Dimension name</string>
+    <string name="rating_dimension_detail_hint">Guideline (optional)</string>
+    <string name="rating_level_add">Add content rating</string>
+    <string name="rating_level_name_hint">Rating name</string>
+    <string name="rating_level_weights">Dimension weights (0–10, 0 = excluded)</string>
+    <string name="rating_weights_equal">Equal weights</string>
+    <string name="rating_delete_confirm">Delete this rating?</string>
+    <string name="rating_for_book">Rate it</string>
+    <string name="rating_delete_dimension_confirm">Delete this dimension? Scores for it are kept but no longer shown.</string>
+    <string name="rating_search_this_book">Search this book</string>
+    <string name="rating_export">Export as Excel</string>
+    <string name="rating_export_failed">Export failed: %1$s</string>
+    <string name="rating_export_success">Exported</string>
+    <string name="rating_storage_unavailable">App storage unavailable</string>
 </resources>

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -107,6 +108,9 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.domain.model.BookRatingConfig
+import io.legado.app.domain.model.ResolvedBookRating
+import io.legado.app.feature.bookrating.BookRatingSheet
 import io.legado.app.help.WebCacheManager
 import io.legado.app.help.coil.CoverExtras
 import io.legado.app.help.webView.WebJsExtensions
@@ -181,6 +185,7 @@ import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 fun BookInfoScreen(
     state: BookInfoUiState,
     groups: ImmutableList<BookGroup>,
+    ratingConfig: BookRatingConfig,
     onIntent: (BookInfoIntent) -> Unit,
     onBack: () -> Unit,
     sharedTransitionScope: SharedTransitionScope? = null,
@@ -239,6 +244,7 @@ fun BookInfoScreen(
         BookInfoScreenContent(
             state = state,
             groups = groups,
+            ratingConfig = ratingConfig,
             onIntent = onIntent,
             onBack = onBack,
             sharedTransitionScope = sharedTransitionScope,
@@ -283,6 +289,7 @@ fun BookInfoScreen(
 private fun BookInfoScreenContent(
     state: BookInfoUiState,
     groups: ImmutableList<BookGroup>,
+    ratingConfig: BookRatingConfig,
     onIntent: (BookInfoIntent) -> Unit,
     onBack: () -> Unit,
     sharedTransitionScope: SharedTransitionScope?,
@@ -479,6 +486,11 @@ private fun BookInfoScreenContent(
                                                 onIntent(BookInfoIntent.IntroImageLongClick(source))
                                             },
                                         )
+                                        BookInfoRatingCard(
+                                            rating = state.rating,
+                                            ratingConfig = ratingConfig,
+                                            onClick = { onIntent(BookInfoIntent.RatingClick) },
+                                        )
                                         state.relatedBooks.forEach { module ->
                                             RelatedBooksBanner(
                                                 title = module.title,
@@ -575,6 +587,17 @@ private fun BookInfoScreenContent(
             show = currentSheet == BookInfoSheet.ReadRecord,
             totalReadTime = state.readRecordTotalTime,
             timelineDays = state.readRecordTimelineDays,
+            onDismissRequest = { onIntent(BookInfoIntent.DismissSheet) },
+        )
+        BookInfoSheet.Rating -> BookRatingSheet(
+            show = currentSheet == BookInfoSheet.Rating,
+            bookName = state.book?.name.orEmpty(),
+            config = ratingConfig,
+            existing = state.rating,
+            onSave = { levelId, scores, notes ->
+                onIntent(BookInfoIntent.SaveRating(levelId, scores, notes))
+            },
+            onClear = { onIntent(BookInfoIntent.ClearRating) },
             onDismissRequest = { onIntent(BookInfoIntent.DismissSheet) },
         )
         is BookInfoSheet.WebFiles -> WebFileSheet(
@@ -1525,6 +1548,50 @@ private fun BookInfoActionCard(
                 text = label,
                 style = LegadoTheme.typography.bodySmall,
                 maxLines = 2,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookInfoRatingCard(
+    rating: ResolvedBookRating?,
+    ratingConfig: BookRatingConfig,
+    onClick: () -> Unit,
+) {
+    val total = rating?.let {
+        BookRatingConfig.totalScore(ratingConfig, it.record.levelId, it.scores)
+    }
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        onClick = onClick,
+        containerColor = LegadoTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AppIcon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = LegadoTheme.colorScheme.primary,
+            )
+            AppText(
+                text = stringResource(R.string.book_rating),
+                style = LegadoTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            AppText(
+                text = total?.let { stringResource(R.string.rating_total_score, it) }
+                    ?: stringResource(R.string.rating_not_rated),
+                style = LegadoTheme.typography.titleMedium,
+                color = LegadoTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
             )
         }
     }

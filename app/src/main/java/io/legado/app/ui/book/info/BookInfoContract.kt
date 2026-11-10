@@ -10,6 +10,7 @@ import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.domain.model.BookshelfConflict
 import io.legado.app.domain.model.ConflictBookSummary
 import io.legado.app.domain.model.PrivateAccessState
+import io.legado.app.domain.model.ResolvedBookRating
 import io.legado.app.domain.usecase.ChangeSourceMigrationOptions
 import io.legado.app.ui.widget.components.variable.VariableEditorUiState
 import kotlinx.collections.immutable.ImmutableList
@@ -78,6 +79,8 @@ data class BookInfoUiState(
     val privateAccess: PrivateAccessState = PrivateAccessState(),
     /** 应用内密码解锁弹窗（生物不可用或用户选择密码时） */
     val showPrivatePasswordDialog: Boolean = false,
+    /** 本书的维度评分（按书名+作者关联，移出书架不丢） */
+    val rating: ResolvedBookRating? = null,
 )
 
 @Stable
@@ -159,6 +162,7 @@ sealed interface BookInfoSheet {
     data object ShelfDelete : BookInfoSheet
     data class SourcePicker(val oldBook: Book) : BookInfoSheet
     data object ReadRecord : BookInfoSheet
+    data object Rating : BookInfoSheet
     data class WebFiles(val openAfterImport: Boolean) : BookInfoSheet
     data class ArchiveEntries(
         val archiveUri: Uri,
@@ -210,6 +214,13 @@ sealed interface BookInfoIntent {
     data object GroupClick : BookInfoIntent
     data object ChangeSourceClick : BookInfoIntent
     data object ReadRecordClick : BookInfoIntent
+    data object RatingClick : BookInfoIntent
+    data class SaveRating(
+        val levelId: String,
+        val scores: Map<String, Float>,
+        val notes: Map<String, String>,
+    ) : BookInfoIntent
+    data object ClearRating : BookInfoIntent
     data object RemarkClick : BookInfoIntent
     data class SaveCover(val path: String) : BookInfoIntent
     data class UpdateRemark(val remark: String) : BookInfoIntent

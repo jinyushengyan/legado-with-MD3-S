@@ -136,6 +136,16 @@ data object MainRouteSettingsDownloadCache : MainRoute
 data object MainRouteSettingsTranslation : MainRoute
 
 @Serializable
+data class MainRouteBookRating(
+    /** 非空时进入页面直接打开该书的评分编辑弹层（阅读记录补录入口）。 */
+    val editName: String? = null,
+    val editAuthor: String? = null,
+) : MainRoute
+
+@Serializable
+data object MainRouteBookRatingConfig : MainRoute
+
+@Serializable
 data object MainRouteImportLocal : MainRoute
 
 @Serializable

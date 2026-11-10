@@ -160,6 +160,8 @@ object MainNavigator {
             MainRouteSettingsThemeManage,
             MainRouteSettingsDownloadCache,
             MainRouteSettingsTranslation,
+            is MainRouteBookRating,
+            MainRouteBookRatingConfig,
             MainRouteSettingsPrivate -> {
                 backStack.clear()
                 backStack.add(MainRouteHome)

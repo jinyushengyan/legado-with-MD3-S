@@ -22,6 +22,7 @@ import io.legado.app.data.dao.BookDao
 import io.legado.app.data.dao.BookGroupDao
 import io.legado.app.data.dao.BookKnowledgeDao
 import io.legado.app.data.dao.BookMarkingDao
+import io.legado.app.data.dao.BookRatingDao
 import io.legado.app.data.dao.BookSourceDao
 import io.legado.app.data.dao.BookmarkDao
 import io.legado.app.data.dao.CacheDao
@@ -82,6 +83,7 @@ import io.legado.app.data.entities.BookKnowledgeEntry
 import io.legado.app.data.entities.BookMarking
 import io.legado.app.data.entities.ReadAloudAudioDownload
 import io.legado.app.data.entities.BookOutlineNode
+import io.legado.app.data.entities.BookRating
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.BookVoiceBindingEntity
@@ -136,7 +138,7 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 133,
+    version = 134,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
@@ -158,7 +160,8 @@ val appDb by lazy {
         BgmTrackEntity::class,
         BgmPoolEntity::class, BgmPoolMember::class, BgmPoolGroupEntity::class,
         BgmSceneMark::class, VoiceEffectPreset::class,
-        BookMarking::class, ReadAloudAudioDownload::class, RegexCastRule::class, RegexCastGroup::class],
+        BookMarking::class, ReadAloudAudioDownload::class, RegexCastRule::class, RegexCastGroup::class,
+        BookRating::class],
     views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
@@ -281,6 +284,8 @@ val appDb by lazy {
         // highlight_rules 新增边框三列：颜色可空（null = 不描边），粗细默认 1、圆角默认 4，
         // 老规则三列取默认值，读回来不描边、与旧行为逐字节等价
         AutoMigration(from = 132, to = 133),
+        // book_ratings 新表：书籍维度评分，独立于 books，以规范化书名+作者为主键
+        AutoMigration(from = 133, to = 134),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -309,6 +314,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val rssSourceDao: RssSourceDao
     abstract val bookmarkDao: BookmarkDao
     abstract val bookMarkingDao: BookMarkingDao
+    abstract val bookRatingDao: BookRatingDao
     abstract val rssArticleDao: RssArticleDao
     abstract val rssStarDao: RssStarDao
     abstract val rssReadRecordDao: RssReadRecordDao

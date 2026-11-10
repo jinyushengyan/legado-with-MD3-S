@@ -3876,4 +3876,35 @@
     <string name="battery_optimization_status_ignored">已开启无限制（点击可检查厂商后台策略）</string>
     <string name="battery_optimization_status_not_ignored">未开启无限制，后台可能被系统终止</string>
     <string name="reader_paragraph_image_action_unsupported">此图片使用段落规则动作，当前版本尚不支持。</string>
+    <!-- 书籍维度评分 -->
+    <string name="book_rating">我的评分</string>
+    <string name="book_rating_config">评分维度</string>
+    <string name="rating_total_score">综合 %1$.1f 分</string>
+    <string name="rating_not_rated">未评分</string>
+    <string name="rating_content_level">内容限制级</string>
+    <string name="rating_dimension_detail">细则参考</string>
+    <string name="rating_note_hint">短评（可选）</string>
+    <string name="rating_clear">清除评分</string>
+    <string name="rating_import_from_read_records">从阅读记录导入</string>
+    <string name="rating_import_result">已导入 %1$d 本书</string>
+    <string name="rating_add_manually">手动添加</string>
+    <string name="rating_book_name_hint">书名（必填）</string>
+    <string name="rating_book_author_hint">作者（可选）</string>
+    <string name="rating_edit_title">为这本书评分</string>
+    <string name="rating_empty">还没有评分。可以从阅读记录导入，或手动添加。</string>
+    <string name="rating_dimension_add">新增维度</string>
+    <string name="rating_dimension_name_hint">维度名称</string>
+    <string name="rating_dimension_detail_hint">细则参考（可选）</string>
+    <string name="rating_level_add">新增限制级</string>
+    <string name="rating_level_name_hint">限制级名称</string>
+    <string name="rating_level_weights">维度权重（0–10，0 = 不计入总分）</string>
+    <string name="rating_weights_equal">全部等权</string>
+    <string name="rating_delete_confirm">删除这条评分？</string>
+    <string name="rating_for_book">为它评分</string>
+    <string name="rating_delete_dimension_confirm">删除该维度？已有评分会保留但不再展示。</string>
+    <string name="rating_search_this_book">搜索这本书</string>
+    <string name="rating_export">导出 Excel</string>
+    <string name="rating_export_failed">导出失败：%1$s</string>
+    <string name="rating_export_success">已导出</string>
+    <string name="rating_storage_unavailable">应用存储不可用</string>
 </resources>

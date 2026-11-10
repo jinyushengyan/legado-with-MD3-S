@@ -254,6 +254,7 @@ fun BookInfoRouteScreen(
         state = uiState,
         groups = viewModel.allGroups
             .collectAsStateWithLifecycle(persistentListOf<BookGroup>()).value,
+        ratingConfig = viewModel.ratingConfig.collectAsStateWithLifecycle().value,
         onIntent = viewModel::onIntent,
         onBack = { onBack() },
         sharedTransitionScope = sharedTransitionScope,

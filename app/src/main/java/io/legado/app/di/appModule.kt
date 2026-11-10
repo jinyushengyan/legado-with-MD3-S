@@ -30,6 +30,7 @@ import io.legado.app.data.repository.BookGroupRepository
 import io.legado.app.data.repository.BookImportRepository
 import io.legado.app.data.repository.BookKnowledgeRepository
 import io.legado.app.data.repository.BookMarkingRepository
+import io.legado.app.data.repository.BookRatingRepository
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.BookSourceCallbackRepository
 import io.legado.app.data.repository.BookSourceCheckRepository
@@ -122,6 +123,7 @@ import io.legado.app.domain.gateway.BookExportSettingsGateway
 import io.legado.app.domain.gateway.BookGroupMutationGateway
 import io.legado.app.domain.gateway.BookKnowledgeGateway
 import io.legado.app.domain.gateway.BookMarkingGateway
+import io.legado.app.domain.gateway.BookRatingGateway
 import io.legado.app.domain.gateway.BookSearchGateway
 import io.legado.app.domain.gateway.BookSourceCallbackGateway
 import io.legado.app.domain.gateway.BookSourceCheckGateway
@@ -219,6 +221,8 @@ import io.legado.app.domain.usecase.UploadReadingProgressUseCase
 import io.legado.app.domain.usecase.VerifyBookmarkTargetUseCase
 import io.legado.app.domain.usecase.WebDavBackupUseCase
 import io.legado.app.domain.usecase.readRecord.GetReadRecordOverviewUseCase
+import io.legado.app.feature.bookrating.BookRatingConfigViewModel
+import io.legado.app.feature.bookrating.BookRatingListViewModel
 import io.legado.app.feature.explore.ExploreMainViewModel
 import io.legado.app.feature.onboarding.OnboardingViewModel
 import io.legado.app.help.coil.CoverFetcher
@@ -515,6 +519,7 @@ val appModule = module {
     single<BookContentProcessGateway> { BookContentProcessRepository(get()) }
     single<BookMarkingGateway> { BookMarkingRepository(get()) }
     single<BookKnowledgeGateway> { BookKnowledgeRepository(get()) }
+    single<BookRatingGateway> { BookRatingRepository(get()) }
     single<ReadAloudVoiceGateway> { ReadAloudVoiceRepository(get(), get()) }
     singleOf(::CloudTtsCredentialCipher)
     single<CloudTtsEngineGateway> { CloudTtsEngineRepository(get(), get()) }
@@ -644,6 +649,8 @@ val appModule = module {
     viewModelOf(::BackupConfigViewModel)
     viewModelOf(::LabConfigViewModel)
     viewModelOf(::TranslationConfigViewModel)
+    viewModelOf(::BookRatingListViewModel)
+    viewModelOf(::BookRatingConfigViewModel)
     viewModelOf(::AiConfigViewModel)
     viewModelOf(::AiSummaryConfigViewModel)
     viewModelOf(::AiPromptConfigViewModel)

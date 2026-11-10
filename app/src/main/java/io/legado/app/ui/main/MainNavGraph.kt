@@ -35,6 +35,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
+import androidx.compose.ui.res.stringResource
 import io.legado.app.R
 import io.legado.app.constant.BookType
 import io.legado.app.core.ui.morph.BookCoverMorphAnchors
@@ -45,6 +46,8 @@ import io.legado.app.domain.model.BookSearchScope
 import io.legado.app.domain.model.PlaybackCapsuleSource
 import io.legado.app.domain.model.PlaybackCapsuleState
 import io.legado.app.domain.model.settings.AppUiConfiguration
+import io.legado.app.feature.bookrating.BookRatingConfigRouteScreen
+import io.legado.app.feature.bookrating.BookRatingListRouteScreen
 import io.legado.app.feature.reader.platform.ReaderPerfTrace
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.Download
@@ -175,9 +178,12 @@ import io.legado.app.ui.rss.source.edit.RssSourceEditRoute
 import io.legado.app.ui.rss.source.edit.RssSourceEditViewModel
 import io.legado.app.ui.rss.source.manage.RssSourceRouteScreen
 import io.legado.app.ui.rss.subscription.RuleSubRouteScreen
+import io.legado.app.ui.widget.components.SplicedColumnGroup
 import io.legado.app.ui.widget.components.changeSource.ChangeSourceSheet
+import io.legado.app.ui.widget.components.modalBottomSheet.AppModalBottomSheet
 import io.legado.app.ui.widget.components.privacy.PrivateReadGate
 import io.legado.app.ui.widget.components.privacy.PrivateVerifyGate
+import io.legado.app.ui.widget.components.settingItem.ClickableSettingItem
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.startActivityForBook
@@ -671,8 +677,22 @@ fun MainActivity.mainEntryProvider(
             onNavigateToDownloadCache = { pushRoute(MainRouteSettingsDownloadCache) },
             onNavigateToTranslation = { pushRoute(MainRouteSettingsTranslation) },
             onNavigateToLab = { pushRoute(MainRouteSettingsLabConfig) },
-            onNavigateToPrivate = { pushRoute(MainRouteSettingsPrivate) }
+            onNavigateToPrivate = { pushRoute(MainRouteSettingsPrivate) },
+            onNavigateToBookRating = { pushRoute(MainRouteBookRating()) },
+            onNavigateToBookRatingConfig = { pushRoute(MainRouteBookRatingConfig) }
         )
+    }
+
+    entry<MainRouteBookRating> { key ->
+        BookRatingListRouteScreen(
+            onBackClick = { onNavigateBack() },
+            editName = key.editName,
+            editAuthor = key.editAuthor,
+        )
+    }
+
+    entry<MainRouteBookRatingConfig> {
+        BookRatingConfigRouteScreen(onBackClick = { onNavigateBack() })
     }
 
     entry<MainRouteSettingsOther> {
@@ -1325,6 +1345,8 @@ fun MainActivity.mainEntryProvider(
     }
 
     entry<MainRouteReadRecord> {
+        // 书不在书架时不再直接跳搜索：给出「搜索这本书 / 为它评分」选择
+        var notShelfRecord by remember { mutableStateOf<Pair<String, String>?>(null) }
         ReadRecordRouteScreen(
             onBackClick = { onNavigateBack() },
             onBookClick = { name, author ->
@@ -1334,7 +1356,7 @@ fun MainActivity.mainEntryProvider(
                     }
                     if (book != null) this@mainEntryProvider.startActivityForBook(book)
                     else {
-                        onNavigateToRoute(MainRouteSearch(key = name))
+                        notShelfRecord = name to author
                     }
                 }
             },
@@ -1342,9 +1364,22 @@ fun MainActivity.mainEntryProvider(
                 onNavigateToRoute(MainRouteReadRecordOverview)
             }
         )
+        NotShelfRecordSheet(
+            record = notShelfRecord,
+            onDismiss = { notShelfRecord = null },
+            onSearch = { name, _ ->
+                notShelfRecord = null
+                onNavigateToRoute(MainRouteSearch(key = name))
+            },
+            onRate = { name, author ->
+                notShelfRecord = null
+                onNavigateToRoute(MainRouteBookRating(editName = name, editAuthor = author))
+            },
+        )
     }
 
     entry<MainRouteReadRecordOverview> {
+        var notShelfRecord by remember { mutableStateOf<Pair<String, String>?>(null) }
         ReadRecordOverviewRouteScreen(
             onBackClick = { onNavigateBack() },
             onBookClick = { name, author ->
@@ -1354,10 +1389,22 @@ fun MainActivity.mainEntryProvider(
                     }
                     if (book != null) this@mainEntryProvider.startActivityForBook(book)
                     else {
-                        onNavigateToRoute(MainRouteSearch(key = name))
+                        notShelfRecord = name to author
                     }
                 }
             }
+        )
+        NotShelfRecordSheet(
+            record = notShelfRecord,
+            onDismiss = { notShelfRecord = null },
+            onSearch = { name, _ ->
+                notShelfRecord = null
+                onNavigateToRoute(MainRouteSearch(key = name))
+            },
+            onRate = { name, author ->
+                notShelfRecord = null
+                onNavigateToRoute(MainRouteBookRating(editName = name, editAuthor = author))
+            },
         )
     }
 
@@ -2037,5 +2084,34 @@ internal fun MainActivity.AudioPlayerMorphOverlay(
                 audioPlayViewModel.addToBookshelf(book, toc)
             },
         )
+    }
+}
+
+/**
+ * 阅读记录里点了已移出书架的书：给「搜索这本书 / 为它评分」两个出口，
+ * 评分走「我的评分」总览并直接打开该书的编辑弹层。
+ */
+@Composable
+private fun NotShelfRecordSheet(
+    record: Pair<String, String>?,
+    onDismiss: () -> Unit,
+    onSearch: (name: String, author: String) -> Unit,
+    onRate: (name: String, author: String) -> Unit,
+) {
+    AppModalBottomSheet(
+        show = record != null,
+        onDismissRequest = onDismiss,
+        title = record?.first.orEmpty(),
+    ) {
+        SplicedColumnGroup {
+            ClickableSettingItem(
+                title = stringResource(R.string.rating_search_this_book),
+                onClick = { record?.let { onSearch(it.first, it.second) } }
+            )
+            ClickableSettingItem(
+                title = stringResource(R.string.rating_for_book),
+                onClick = { record?.let { onRate(it.first, it.second) } }
+            )
+        }
     }
 }

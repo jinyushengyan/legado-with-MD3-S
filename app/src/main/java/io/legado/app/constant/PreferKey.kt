@@ -493,6 +493,9 @@ object PreferKey {
     const val eyeProtectionSchedule = "eyeProtectionSchedule"
     const val eyeProtectionStartTime = "eyeProtectionStartTime"
     const val eyeProtectionEndTime = "eyeProtectionEndTime"
+
+    /** 书籍维度评分配置（维度/限制级/权重的 JSON） */
+    const val bookRatingConfig = "bookRatingConfig"
 }
 
 object ReadMenuBlurMode {
