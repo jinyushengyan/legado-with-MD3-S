@@ -38,6 +38,16 @@ Design 3 风格重构版本。
 
 ---
 
+## 从源码构建
+
+首次检出后运行 `git submodule update --init modules/miuix modules/coui modules/mochi`。使用 JDK 21、Python 3.11+，在 `local.properties` 配置 `sdk.dir` 或设置 `ANDROID_HOME`，安装 Android 36、37.0、37.1 平台后执行：
+
+```shell
+python scripts/prepare-ui-forks.py
+```
+
+这会将固定提交的 COUI、Mochi 构建到本项目 `build/ui-forks/maven`，随后可照常运行 Gradle；Miuix 继续通过 `includeBuild` 编译。GitHub 的验证、Release 和手动 APK 工作流自动执行相同步骤，不需要 Maven 发布凭据。具体更新流程见 [UI fork 构建说明](docs/dev/ui-fork-builds.md)。
+
 ## 💬 交流
 
 * **Telegram 群组：** [Legado with MD3](https://t.me/materado)
@@ -70,6 +80,7 @@ Design 3 风格重构版本。
 
 > **【特别提示】**
 > 在下载、安装或使用本软件前，请您务必仔细阅读并充分理解本协议及免责声明的全部内容。您一旦下载、安装或使用本软件，即视为已阅读、理解并同意接受本声明的全部内容。
+> 联系方式：kudomagaz@gmail.com
 
 ### 一、软件性质说明
 

@@ -304,6 +304,7 @@ object BackupConfig {
         PreferKey.mochiTopBarLiquidGlass,
         PreferKey.mochiScrollEdgeBlurEnabled,
         PreferKey.miuixTopBarLiquidGlass,
+        PreferKey.useHyperOs4Components,
         PreferKey.bookInfoFollowCoverColor,
         PreferKey.bookInfoBackgroundBlur,
         PreferKey.bookInfoNetworkCoverBackground,

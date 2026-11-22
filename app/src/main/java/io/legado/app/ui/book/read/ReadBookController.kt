@@ -62,6 +62,7 @@ import io.legado.app.feature.reader.platform.ReaderPerfTrace
 import io.legado.app.help.TTS
 import io.legado.app.help.book.isOnLineTxt
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.help.config.ReadStyleResolver
 import io.legado.app.help.readaloud.cast.BgmSceneStore
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.SelectItem
@@ -300,6 +301,15 @@ class ReadBookController(
         }
         if (changed) directReaderPageIndex?.let(::publishDirectReaderWindow)
     }
+
+    /**
+     * 高亮规则这一轮用哪套颜色：夜间用夜间色，墨水屏是白底、与白天同一套。
+     *
+     * 排版身份与分页任务各取一次都走这里，避免两处各写一遍 `isNightTheme` 推断而算出
+     * 不同的结果（旧页按一套颜色、新页按另一套）。
+     */
+    private fun highlightColorMode(): Boolean =
+        ReadStyleResolver.currentMode() == ReadStyleResolver.ReadStyleMode.Night
 
     /**
      * Theme-style selection path, mirroring the legacy View's `[1, 2, 5]`: re-fetch the inline
@@ -673,19 +683,18 @@ class ReadBookController(
         is ReaderElement.Rule -> false
     }
 
-    private fun handleComposeLinkClick(rawLink: String) {
-        val book = ReadBook.book ?: return
+    private fun handleComposeLinkClick(rawLink: String): Boolean {
+        val book = ReadBook.book ?: return false
         val link = LocalBookSemanticHtml.resolveReaderLink(rawLink, book.isLocal,
-            ReadBook.readerChapterInputWindow.current?.chapter?.url.orEmpty()) ?: return
+            ReadBook.readerChapterInputWindow.current?.chapter?.url.orEmpty()) ?: return false
         if (LocalBookSemanticHtml.isExternalLink(link)) {
             viewModel.onIntent(
-                ReadBookIntent.ShowDialog(ReadBookDialog.ConfirmOpenExternalUrl(if (link.startsWith("//")) "https:$link" else link))
+                ReadBookIntent.ShowDialog(ReadBookDialog.ConfirmOpenExternalUrl(link))
             )
-            return
-        }
-        if (LocalBookSemanticHtml.classifyLink(link) == LocalBookSemanticHtml.LinkKind.INTERNAL) {
+        } else {
             viewModel.openInternalBookLink(link)
         }
+        return true
     }
 
     fun onComposeReaderElementLongPress(element: ReaderElement, x: Float, y: Float): Boolean {
@@ -747,26 +756,30 @@ class ReadBookController(
         val debounce = now - composeImageClickAt < 300L
         composeImageClickAt = now
         composeImageDoubleClick = if (debounce) !composeImageDoubleClick else false
+        val action = image.action?.takeIf(String::isNotBlank)
         return when (readSettingsGateway.currentSettings.clickImgWay) {
             // 气泡没有磁盘文件，放进大图预览只会是一张错误占位图：有动作就执行动作，否则吞掉点击
             "1" -> if (ParagraphBubbleRenderer.isBubbleSrc(image.source)) {
-                image.action?.takeIf(String::isNotBlank)?.let { clickImg(it, image.source) }
+                action?.let { clickImg(it, image.source) }
                 true
             } else {
                 viewModel.onIntent(ReadBookIntent.ShowSheet(ReadBookSheet.Photo(image.source)))
                 true
             }
-            "2" -> if (!debounce && ReadBook.book?.isOnLineTxt == true) {
-                image.action?.takeIf(String::isNotBlank)?.let { clickImg(it, image.source); true }
-                    ?: oldClickImg(image.source)
-            } else false
+            "2" -> when {
+                ReadBook.book?.isOnLineTxt != true -> image.link?.let(::handleComposeLinkClick) == true
+                debounce -> false
+                else -> action?.let { clickImg(it, image.source); true } ?: oldClickImg(image.source)
+            }
             "3" -> false
             "4" -> if (composeImageDoubleClick) {
-                image.action?.takeIf(String::isNotBlank)?.let { clickImg(it, image.source); true } ?: false
+                action?.let { clickImg(it, image.source); true } ?: false
             } else true
-            else -> if (!debounce) {
-                image.action?.takeIf(String::isNotBlank)?.let { clickImg(it, image.source); true } ?: false
-            } else false
+            else -> when {
+                action == null -> image.link?.let(::handleComposeLinkClick) == true
+                debounce -> false
+                else -> { clickImg(action, image.source); true }
+            }
         }
     }
 
@@ -1343,6 +1356,7 @@ class ReadBookController(
         }
         val paginationEnvironmentKey = buildString {
             append('|').append(width).append('x').append(height)
+            append('|').append(resolvedPaginationStyle.density)
             append('|').append(contentPadding.left).append(',').append(contentPadding.top)
             append(',').append(contentPadding.right).append(',').append(contentPadding.bottom)
             append('|').append(resolvedPaginationStyle.columnCount(width, height))
@@ -1374,6 +1388,9 @@ class ReadBookController(
             append('|').append(resolvedPaginationStyle.titleBottomSpacingPx)
             append('|').append(resolvedPaginationStyle.paragraphSpacing)
             append('|').append(ReadBookConfig.durConfig.highlightRules.hashCode())
+            // 高亮规则的深浅两套颜色也是排版输入：日夜切换后正文色可能一个字都没变
+            // （用户把两套文字色调成一样），只差这一位才能让旧页作废、按新那套颜色重排。
+            append('|').append(highlightColorMode())
         }
         val key = "$chapterLayoutIdentity,$paginationEnvironmentKey"
         if (directReaderLayoutKey == key && directReaderPages.isNotEmpty()) {
@@ -1655,6 +1672,8 @@ class ReadBookController(
         val environmentKey = directReaderPaginationEnvironmentKey
         val streamGeneration = directReaderStreamGeneration
         val identity = candidate.layoutIdentity()
+        // 在主线程取一次模式再进 IO：任务跑到一半主题切了也不会半章白天色、半章夜间色。
+        val isNightTheme = highlightColorMode()
         readerChapterPaginationJobs.remove(chapterIndex)?.job?.cancel()
         // 旧任务作废：它流出一半的页可能是按旧正文/旧几何排的，必须先撤掉，否则新任务排出的
         // 同 id 页会被"已经存在"挡掉，页表里反而留下旧内容的那几页。
@@ -1691,6 +1710,7 @@ class ReadBookController(
                         contentPaddingBottomPx = padding.bottom,
                         paginationStyle = style,
                         highlightRules = highlightRules,
+                        isNightTheme = isNightTheme,
                         castOptions = io.legado.app.help.readaloud.cast.CastRenderOptions.load(
                             candidate.book.bookUrl,
                             chapterIndex,

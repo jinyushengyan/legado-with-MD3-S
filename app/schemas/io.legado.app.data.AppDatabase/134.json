@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 134,
-    "identityHash": "e45b11cac9a10b513952b0dfd4937dc7",
+    "identityHash": "aad1e1aa14c912c8bff41a9a3c55e237",
     "entities": [
       {
         "tableName": "books",
@@ -5803,7 +5803,7 @@
       },
       {
         "tableName": "read_aloud_audio_downloads",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bookUrl` TEXT NOT NULL, `chapterIndex` INTEGER NOT NULL, `title` TEXT NOT NULL, `files` TEXT NOT NULL, `createTime` INTEGER NOT NULL, PRIMARY KEY(`bookUrl`, `chapterIndex`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bookUrl` TEXT NOT NULL, `chapterIndex` INTEGER NOT NULL, `title` TEXT NOT NULL, `files` TEXT NOT NULL, `createTime` INTEGER NOT NULL, `expectedSentenceCount` INTEGER, PRIMARY KEY(`bookUrl`, `chapterIndex`))",
         "fields": [
           {
             "fieldPath": "bookUrl",
@@ -5834,6 +5834,11 @@
             "columnName": "createTime",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "expectedSentenceCount",
+            "columnName": "expectedSentenceCount",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -6061,72 +6066,6 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_regex_cast_groups_parentId_order` ON `${TABLE_NAME}` (`parentId`, `order`)"
           }
         ]
-      },
-      {
-        "tableName": "book_ratings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ratingKey` TEXT NOT NULL, `bookName` TEXT NOT NULL, `bookAuthor` TEXT NOT NULL DEFAULT '', `bookUrl` TEXT NOT NULL DEFAULT '', `levelId` TEXT NOT NULL DEFAULT '', `scoresJson` TEXT NOT NULL DEFAULT '{}', `notesJson` TEXT NOT NULL DEFAULT '{}', `updatedAt` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`ratingKey`))",
-        "fields": [
-          {
-            "fieldPath": "ratingKey",
-            "columnName": "ratingKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "bookName",
-            "columnName": "bookName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "bookAuthor",
-            "columnName": "bookAuthor",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "''"
-          },
-          {
-            "fieldPath": "bookUrl",
-            "columnName": "bookUrl",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "''"
-          },
-          {
-            "fieldPath": "levelId",
-            "columnName": "levelId",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "''"
-          },
-          {
-            "fieldPath": "scoresJson",
-            "columnName": "scoresJson",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "'{}'"
-          },
-          {
-            "fieldPath": "notesJson",
-            "columnName": "notesJson",
-            "affinity": "TEXT",
-            "notNull": true,
-            "defaultValue": "'{}'"
-          },
-          {
-            "fieldPath": "updatedAt",
-            "columnName": "updatedAt",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "0"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "ratingKey"
-          ]
-        }
       }
     ],
     "views": [
@@ -6137,7 +6076,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e45b11cac9a10b513952b0dfd4937dc7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aad1e1aa14c912c8bff41a9a3c55e237')"
     ]
   }
 }

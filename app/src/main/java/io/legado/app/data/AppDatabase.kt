@@ -138,7 +138,7 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 135,
+    version = 136,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
@@ -284,10 +284,13 @@ val appDb by lazy {
         // highlight_rules 新增边框三列：颜色可空（null = 不描边），粗细默认 1、圆角默认 4，
         // 老规则三列取默认值，读回来不描边、与旧行为逐字节等价
         AutoMigration(from = 132, to = 133),
-        // book_ratings 新表：书籍维度评分，独立于 books，以规范化书名+作者为主键
-        AutoMigration(from = 133, to = 134),
         // 旧下载记录只有成功文件清单，无法从中判断是否整章完成。
+        AutoMigration(from = 133, to = 134),
+        // highlight_rules 新增四列夜间颜色：可空（null = 跟随白天那一栏），老规则读回来
+        // 四列都是 NULL，解析口径见 HighlightRule.colorsFor。
         AutoMigration(from = 134, to = 135),
+        // book_ratings 新表：书籍维度评分，独立于 books，以规范化书名+作者为主键
+        AutoMigration(from = 135, to = 136),
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
