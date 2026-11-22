@@ -1,11 +1,23 @@
-# 私人魔改版接手说明（3.26.25-jinyu）
+# 私人魔改版接手说明（3.26.30-jinyu）
 
-本包基于 [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) 3.26.25，
+本包基于 [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) 3.26.30，
 只针对"纯小说阅读"场景做私有改动。本文件记录**与原版不同的地方**，读完这一篇即可接手。
 
 ## 构建
 
 环境：JDK 21、Android SDK 37（compileSdk 37 / compileSdkMinor 1 / minSdk 26）。
+
+上游从 3.26.30 起把 `miuix`、`coui`、`mochi` 拆成 git 子模块，且只认本仓库自己编出来的
+产物（`settings.gradle` 用 `exclusiveContent` 锁定 `build/ui-forks/maven`）。首次构建前：
+
+```powershell
+git submodule update --init modules/miuix modules/coui modules/mochi
+python scripts/prepare-ui-forks.py   # 产出 5 个 AAR 到 build/ui-forks/maven
+```
+
+`prepare-ui-forks.py` 需要 Python 3.11+、JDK 21，并且 `git` 在 PATH 中。
+**务必用 JDK 21**：Android Studio 新版本的 JBR 已是 Java 25，`mochi` 的旧 Kotlin
+会报 `IllegalArgumentException: 25.0.3`。CI 已内置这两步。
 
 上游引入了 flavor 拆分（2026-11-10 同步），构建任务名需使用完整 flavor 变体：
 - `appComic` = 漫画增强版（内置 ML Kit / ONNX Runtime 本地翻译、OCR、擦字、气泡检测），
@@ -87,7 +99,7 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 |---|---|
 | `data/entities/BookRating.kt` | Room 实体，表 `book_ratings` |
 | `data/dao/BookRatingDao.kt` | DAO |
-| `data/AppDatabase.kt` | version 135，`AutoMigration(133→134)` 加评分表 + `AutoMigration(134→135)` 承接上游列变更 |
+| `data/AppDatabase.kt` | version 136，`AutoMigration(133→134)`、`(134→135)` 承接上游迁移 + `AutoMigration(135→136)` 加评分表 |
 | `domain/model/BookRating.kt` | 维度/分级配置、总分公式、规范化 key |
 | `domain/gateway/BookRatingGateway.kt` | 领域接口 |
 | `data/repository/BookRatingRepository.kt` | 配置存 `PreferKey.bookRatingConfig`，CSV 导出 |
@@ -123,9 +135,10 @@ R.jar 文件锁、KSP 中间产物删除失败）。**不需要再手动加** `-
 ## 分支与同步上游
 
 - 魔改集中在 `jinyu` 分支，基线是上游 3.26.19 的发布提交 `c6798651`，
-  当前已同步到上游 main tip（2026-11-10，`4d2cc8e5`）。`main` 保持与上游一致。
-- 同步上游步骤（Windows + ghproxy 网络）：
-  1. 浅克隆上游到临时目录：`git clone --depth 1 --no-checkout https://ghproxy.net/https://github.com/HapeLee/legado-with-MD3.git upstream_main`
+  当前已同步到上游 3.26.30（`db3d401`）。`main` 保持与上游一致。
+- 同步上游按 release 走（作者发版时合一次即可，中间的 README/CI 提交可顺手带上）：
+  1. 浅克隆上游到临时目录：`git clone --depth 1 --no-checkout https://gh-proxy.com/https://github.com/HapeLee/legado-with-MD3.git upstream_main`
+     （`ghproxy.net` 已不可用，证书报错；`gh-proxy.com` 实测可用）
   2. 在临时目录加深祖先链：`git fetch --shallow-since=2026-10-22 --no-tags origin main`
      （必须覆盖我们的基线 `c6798651`，否则 merge-base 为空，后续 merge 会变成乱冲突）
   3. 拉到工作仓库：`git fetch --update-shallow --depth=1000 --no-tags ../upstream_main main:refs/remotes/upstream/main`
