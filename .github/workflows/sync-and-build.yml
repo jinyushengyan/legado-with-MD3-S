@@ -26,21 +26,21 @@ jobs:
           ref: jinyu
           fetch-depth: 0
 
-      - name: Merge upstream main
+      - name: Merge latest upstream release
         id: merge
         run: |
           set -e
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git remote add upstream https://github.com/HapeLee/legado-with-MD3.git
-          git fetch --no-tags upstream main
-          UP=$(git rev-parse upstream/main)
-          echo "upstream=$UP" >> "$GITHUB_OUTPUT"
-          if git merge-base --is-ancestor "$UP" HEAD; then
-            echo "已经包含上游 $UP，无需合并"
+          git remote add upstream https://github.com/HapeLee/legado-with-MD3.git || true
+          git fetch --tags --force upstream 'refs/tags/*:refs/tags/*'
+          LATEST=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+          echo "upstream=$LATEST" >> "$GITHUB_OUTPUT"
+          if git merge-base --is-ancestor "$LATEST" HEAD; then
+            echo "已经包含上游 $LATEST，无需合并"
           else
-            echo "合入上游 $UP"
-            git merge --no-ff -m "merge: sync upstream $UP" upstream/main
+            echo "合入上游 $LATEST"
+            git merge --no-ff -m "merge: sync upstream $LATEST" "$LATEST"
             git push origin HEAD:jinyu
           fi
           echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
